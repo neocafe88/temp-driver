@@ -33,6 +33,8 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 struct temp_dev temp_device;
 
+int read_count = 0;
+
 
 int temp_open(struct inode *inode, struct file *filp)
 {
@@ -57,13 +59,17 @@ int temp_release(struct inode *inode, struct file *filp)
 ssize_t temp_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
-    struct temp_dev *dev;
+    //struct temp_dev *dev;
     char write_buf[12];
     int temp, not_copied, n_read;
 
     PDEBUG("READ >>  %zu bytes with offset %lld, f_pos=%lld", count, *f_pos, filp->f_pos);
 
     if (filp == NULL) return -EFAULT;
+
+    read_count++;
+
+    if (read_count % 2 == 0) return 0;
 
     //dev = (struct temp_dev*) filp->private_data; 
     //if (dev == NULL) return -EFAULT;
@@ -75,8 +81,10 @@ ssize_t temp_read(struct file *filp, char __user *buf, size_t count,
     // temp to jitter
     snprintf(write_buf, 12, "%d", temp); // 12 = buffer size
 
-    n_read = 2;
-    not_copied = copy_to_user(buf, write_buf, n_read); // only two digits
+    n_read = 3;
+    not_copied = copy_to_user(buf, write_buf, n_read); // two digits + '\0'
+						       //
+    *f_pos += n_read;
     
     return n_read;
 }
@@ -155,7 +163,7 @@ int temp_init_module(void)
     printk(KERN_ALERT "Hello, this temp driver");
 
     // dynamic allocation of device number
-    result = alloc_chrdev_region(&dev, temp_minor, 1, "aesdchar");
+    result = alloc_chrdev_region(&dev, temp_minor, 1, "tempdriver");
     temp_major = MAJOR(dev);
 
     if (result < 0) {
@@ -180,8 +188,6 @@ int temp_init_module(void)
 
 void temp_cleanup_module(void)
 {
-    int i;
-
     dev_t devno = MKDEV(temp_major, temp_minor);
 
     cdev_del(&temp_device.cdev);

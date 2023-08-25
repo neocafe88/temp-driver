@@ -10,8 +10,6 @@
 #ifndef TEMP_DRIVER_TEMPDRIVER_H_
 #define TEMP_DRIVER_TEMPDRIVER_H_
 
-#include "aesd-circular-buffer.h"
-
 #define TEMP_DEBUG 1  
 // (above) Remove comment on this line to enable debug
 
