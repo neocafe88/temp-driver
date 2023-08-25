@@ -91,7 +91,7 @@ ssize_t temp_read(struct file *filp, char __user *buf, size_t count,
     *f_pos += n_read;
 
     last_jiffies = jiffies;
-    
+       
     return n_read;
 }
 
