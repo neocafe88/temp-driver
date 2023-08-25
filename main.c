@@ -21,6 +21,7 @@
 #include <linux/fs.h> // file_operations
 #include <linux/slab.h> // file_operations
 #include <linux/random.h>
+#include <linux/jiffies.h>
 
 #include "tempdriver.h"
 #include "temp_ioctl.h"
@@ -34,7 +35,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 struct temp_dev temp_device;
 
 int read_count = 0;
-
+unsigned long last_jiffies = 0;
 
 int temp_open(struct inode *inode, struct file *filp)
 {
@@ -62,14 +63,17 @@ ssize_t temp_read(struct file *filp, char __user *buf, size_t count,
     //struct temp_dev *dev;
     char write_buf[12];
     int temp, not_copied, n_read;
+    unsigned long cur_jiffies;
 
-    PDEBUG("READ >>  %zu bytes with offset %lld, f_pos=%lld", count, *f_pos, filp->f_pos);
+    // if last read is within 1 second, return no-read
+    if (jiffies - last_jiffies < HZ) {
+        return 0;
+    }
+    
+
+    //PDEBUG("READ >>  %zu bytes with offset %lld, f_pos=%lld", count, *f_pos, filp->f_pos);
 
     if (filp == NULL) return -EFAULT;
-
-    read_count++;
-
-    if (read_count % 2 == 0) return 0;
 
     //dev = (struct temp_dev*) filp->private_data; 
     //if (dev == NULL) return -EFAULT;
@@ -79,12 +83,14 @@ ssize_t temp_read(struct file *filp, char __user *buf, size_t count,
     temp = 76 + temp % 10; // jitter around 76 
 					   
     // temp to jitter
-    snprintf(write_buf, 12, "%d", temp); // 12 = buffer size
+    snprintf(write_buf, 12, "%d\n", temp); // 12 = buffer size
 
     n_read = 3;
     not_copied = copy_to_user(buf, write_buf, n_read); // two digits + '\0'
 						       //
     *f_pos += n_read;
+
+    last_jiffies = jiffies;
     
     return n_read;
 }
